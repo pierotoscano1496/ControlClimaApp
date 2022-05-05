@@ -1,11 +1,13 @@
 import React, { createContext, useEffect, useState } from "react";
 import MapView, { Marker } from "react-native-maps";
 import { Alert, Animated, Easing, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Button } from "react-native-elements";
 import { formatDate } from "../../helpers/DateTimeformat";
 import { obtenerClimasPorFechas } from '../../services/ClimaService';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from "react-native-vector-icons/FontAwesome";
+import ClimaService from "../../services/ClimaService";
 
 export default BuscarClima = ({ route, navigation }) => {
     let today = new Date();
@@ -19,11 +21,17 @@ export default BuscarClima = ({ route, navigation }) => {
     const [tipoFecha, setTipoFecha] = useState(1); // Tipo 1: Fecha Inicio, Tipo 2: Fecha Fin
     const [isLoading, setLoading] = useState(false);
     const [ubicacion, setUbicacion] = useState(null);
+    const [usuario, setUsuario] = useState(null);
 
     useEffect(() => {
-        console.log("Use efect ran");
+        getUsuarioLogueado();
         setUbicacion(ubicacionSelected);
     }, [ubicacionSelected]);
+
+    const getUsuarioLogueado = async () => {
+        const usuarioLogueado = await AsyncStorage.getItem("usuarioLogueado");
+        setUsuario(JSON.parse(usuarioLogueado));
+    };
 
     const openDatePicker = (tipoFecha) => {
         setShowDatePicker(true);
@@ -50,7 +58,6 @@ export default BuscarClima = ({ route, navigation }) => {
                         />}
                     iconRight
                     onPress={() => openDatePicker(tipoFecha)} />
-
             </View>
         );
     };
@@ -90,29 +97,16 @@ export default BuscarClima = ({ route, navigation }) => {
     };
 
     const mostrarMapa = () => {
-        navigation.navigate("BuscarUbicacionMapa");
+        navigation.getParent().navigate("MapaBuscarClima");
     };
 
     const buscarClimas = async () => {
-        /* if (fechaInicio && fechaFin) {
-            //Buscar climas
-            setLoading(true);
-            const climasBuscados = await obtenerClimasPorFechas(fechaInicio, fechaFin);
-            navigation.navigate("ClimasBuscados", {
-                fechaInicio: fechaInicio,
-                fechaFin: fechaFin
-            });
-        } else {
-            Alert.alert("Error", "Debe ingresar las fechas de inicio y fin");
-        } */
-        if (ubicacion) {
-            let newUbicacion = { ...ubicacion };
-            newUbicacion.nombre = "Nuevo nombre";
-            console.log(newUbicacion);
-            setUbicacion(newUbicacion);
-            Alert.alert("Mensaje", "Buscando climas en " + ubicacion.nombre);
-        } else {
-            Alert.alert("Mensaje", "Buscando climas en todos");
+        try {
+            const idUbicacion = ubicacion ? ubicacion.id : null;
+            let climas = await ClimaService.obtenerPorFormulario(usuario.id, fechaInicio, fechaFin, idUbicacion);
+            navigation.navigate("Listado de climas", { climas, ubicacion });
+        } catch (ex) {
+            Alert.alert("Error", ex.message);
         }
     };
 
@@ -153,7 +147,6 @@ export default BuscarClima = ({ route, navigation }) => {
 
             </ScrollView>
         </View>
-
     );
 };
 

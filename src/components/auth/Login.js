@@ -1,44 +1,47 @@
 
-import React, { createContext, useState } from "react";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { createContext, useContext, useState } from "react";
+import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import UsuarioService from '../../services/UsuarioService';
 
 export default Login = ({ navigation }) => {
-    const [credential, setCredential] = useState('');
+    const [credencial, setCredencial] = useState('');
     const [password, setPassword] = useState('');
     const [key, setKey] = useState('');
-    const [error, setError] = useState('');
+    const [errorMessage, setErrorMessage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [user, setUser] = useState(null);
 
-    const userContext = createContext();
+    useContext(() => {
+        checkUsuarioLogueado();
+    });
 
-    const login = () => {
-        navigation.navigate('BuscarClima');
-        /* setLoading(true);
+    const checkUsuarioLogueado = async () => {
+        const usuarioLogueado = await AsyncStorage.getItem("usuarioLogueado");
+        if (usuarioLogueado) {
+            setUser(JSON.parse(usuarioLogueado));
+            navigation.navigate('MainNavigator');
+        }
+    };
+
+    const login = async () => {
+        setLoading(true);
         try {
-            const response = await fetch('http://localhost:3000/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    credential,
-                    password,
-                    secretWord
-                })
-            });
-            const data = await response.json();
-            if (data.error) {
-                setError(data.error);
-            } else {
-                setUser(data);
-            }
-            setLoading(false);
+            const userCredentials = {
+                credencial: credencial,
+                password: password
+            };
+            const user = await UsuarioService.login(userCredentials);
+            setErrorMessage(null);
+            setUser(user);
+            await AsyncStorage.setItem('usuarioLogueado', JSON.stringify(user));
+            navigation.navigate('MainNavigator');
         } catch (error) {
-            console.log(error);
-            setLoading(false);
-        } */
-    }
+            setErrorMessage(error.message);
+        }
+
+        setLoading(false);
+    };
 
     const styles = StyleSheet.create({
         container: {
@@ -60,41 +63,13 @@ export default Login = ({ navigation }) => {
         }
     });
 
-    /* return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Login</Text>
-            <Text style={styles.error}>{error}</Text>
-            <View style={styles.form}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    value={credential}
-                    onChangeText={setCredential}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Palabra secreta"
-                    value={key}
-                    onChangeText={setKey}
-                />
-                <Button title="Ingresar" style onPress={login} />
-            </View>
-        </View>
-    ); */
     return (
         <View>
             <Text>Login</Text>
             <TextInput
                 placeholder="Correo o código"
-                value={credential}
-                onChangeText={setCredential}
+                value={credencial}
+                onChangeText={setCredencial}
             />
             <TextInput
                 placeholder="Contraseña"
@@ -102,11 +77,7 @@ export default Login = ({ navigation }) => {
                 onChangeText={setPassword}
                 secureTextEntry
             />
-            <TextInput
-                placeholder="Palabra secreta"
-                value={key}
-                onChangeText={setKey}
-            />
+            {errorMessage && <Text style={{ color: 'red' }}>{errorMessage}</Text>}
             <Button title="Ingresar" onPress={login}></Button>
         </View>
     )
